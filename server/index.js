@@ -176,6 +176,94 @@ app.post('/api/reset', (req, res) => {
   res.json(initial);
 });
 
+// --- Scanning/proxy endpoints (RugCheck + FluxBeam + SOL/USD) ---
+const BASE58_RE = /^[1-9A-HJ-NP-Za-km-z]+$/; // Solana base58 (no 0, O, I, l)
+function isValidMint(m) {
+  const s = String(m || '').trim();
+  return s.length >= 32 && s.length <= 44 && BASE58_RE.test(s);
+}
+
+// Simple in-memory cache for RugCheck reports to avoid frequent fetches
+const reportCache = new Map(); // mint -> { ts: number, data: any }
+const REPORT_TTL_MS = 60_000;
+async function getCachedReport(mint) {
+  const now = Date.now();
+  const cached = reportCache.get(mint);
+  if (cached && (now - cached.ts) < REPORT_TTL_MS) {
+    return cached.data;
+  }
+  const data = await fetchRugReport(mint);
+  reportCache.set(mint, { ts: now, data });
+  return data;
+}
+
+async function fetchRugReport(mint) {
+  const url = `https://api.rugcheck.xyz/v1/tokens/${mint}/report`;
+  const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  if (!resp.ok) throw new Error(`RugCheck ${resp.status}`);
+  return await resp.json();
+}
+
+async function fetchFluxPrice(mint) {
+  const url = `https://data.fluxbeam.xyz/tokens/${mint}/price`;
+  const resp = await fetch(url, { headers: { 'Accept': 'text/plain' } });
+  if (!resp.ok) throw new Error(`Fluxbeam ${resp.status}`);
+  const t = (await resp.text()).trim();
+  const n = Number(t);
+  if (!Number.isFinite(n)) throw new Error('Fluxbeam invalid price');
+  return n;
+}
+
+// Removed SOL/USD conversion per request
+
+// RugCheck proxy
+app.get('/api/scan/report/:mint', async (req, res) => {
+  try {
+    const { mint } = req.params;
+    if (!isValidMint(mint)) return res.status(400).json({ error: 'Invalid mint' });
+    const report = await fetchRugReport(mint);
+    res.json(report);
+  } catch (e) {
+    res.status(502).json({ error: String(e?.message || e) });
+  }
+});
+
+// FluxBeam price proxy
+app.get('/api/scan/price/:mint', async (req, res) => {
+  try {
+    const { mint } = req.params;
+    if (!isValidMint(mint)) return res.status(400).json({ error: 'Invalid mint' });
+    const price = await fetchFluxPrice(mint);
+    res.json({ price });
+  } catch (e) {
+    res.status(502).json({ error: String(e?.message || e) });
+  }
+});
+
+// Removed /api/scan/solusd per request
+
+// Combined summary: price, solUsd, priceUsd, supply, marketCap
+app.get('/api/scan/summary/:mint', async (req, res) => {
+  try {
+    const { mint } = req.params;
+    if (!isValidMint(mint)) return res.status(400).json({ error: 'Invalid mint' });
+    const [report, fluxPrice] = await Promise.all([
+      getCachedReport(mint),
+      fetchFluxPrice(mint),
+    ]);
+    const decimals = Number(report?.token?.decimals ?? 0);
+    const rawSupply = Number(report?.token?.supply ?? 0);
+    const supply = Number.isFinite(rawSupply) ? rawSupply / Math.pow(10, decimals) : null;
+    const price = fluxPrice;
+    // IMPORTANT: Treat FluxBeam price as already in USD to avoid double conversion.
+    const priceUsd = price;
+    const marketCap = (supply != null && Number.isFinite(priceUsd)) ? priceUsd * supply : null;
+    res.json({ mint, price, priceUsd, supply, marketCap, report });
+  } catch (e) {
+    res.status(502).json({ error: String(e?.message || e) });
+  }
+});
+
 // Serve built frontend (if present)
 app.use(express.static(DIST_PATH));
 

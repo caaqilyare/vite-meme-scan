@@ -1,16 +1,11 @@
 {
   "user": {
     "name": "Munasar",
-    "balance": 265
+    "balance": 65
   },
   "positions": {},
   "history": [],
-  "deposits": [
-    {
-      "ts": 1759651952992,
-      "amount": 200
-    }
-  ],
+  "deposits": [],
   "lastScannedMint": "",
   "todos": {}
 }

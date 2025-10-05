@@ -44,20 +44,25 @@ function isValidMint(m: string) {
 }
 
 async function fetchRugReport([, m]: [string, string]) {
-  const url = `https://api.rugcheck.xyz/v1/tokens/${m}/report`;
+  const url = `/api/scan/report/${m}`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`RugCheck ${res.status}`);
   const report: RugReport = await res.json();
   return report;
 }
 
-async function fetchPrice([, m]: [string, string]) {
-  const url = `https://data.fluxbeam.xyz/tokens/${m}/price`;
-  const res = await fetch(url, { headers: { Accept: "text/plain" } });
-  if (!res.ok) throw new Error(`Fluxbeam ${res.status}`);
-  const latest = Number((await res.text()).trim());
-  return Number.isFinite(latest) ? latest : null;
+// Price is provided via the summary endpoint
+
+type Summary = { price?: number; priceUsd?: number; marketCap?: number; supply?: number };
+async function fetchSummary([, m]: [string, string]): Promise<Summary> {
+  const url = `/api/scan/summary/${m}`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`Summary ${res.status}`);
+  const j = await res.json();
+  return j || {};
 }
+
+// Removed SOL/USD conversion per request
 
 export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
   const [inputMint, setInputMint] = useState(mint);
@@ -65,9 +70,9 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Split SWR: lighter 1s price polling, heavier 60s report polling
+  // Split SWR: fast 300ms price+marketcap via summary, and lighter 60s report polling
   const reportKey = searchedMint ? (["report", searchedMint] as const) : null;
-  const priceKey = searchedMint ? (["price", searchedMint] as const) : null;
+  const summaryKey = searchedMint ? (["summary", searchedMint] as const) : null;
 
   const { data: report, error: reportError, isLoading: reportLoading } = useSWR(
     reportKey,
@@ -75,11 +80,13 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
     { refreshInterval: 60_000, revalidateOnFocus: true, keepPreviousData: true }
   );
 
-  const { data: price, error: priceError, isLoading: priceLoading } = useSWR(
-    priceKey,
-    fetchPrice,
-    { refreshInterval: 1_000, dedupingInterval: 0, revalidateIfStale: true }
+  const { data: summary, error: summaryError, isLoading: summaryLoading } = useSWR(
+    summaryKey,
+    fetchSummary,
+    { refreshInterval: 300, dedupingInterval: 0, revalidateIfStale: true }
   );
+
+  // No SOL/USD usage
 
   const tokenName = report?.fileMeta?.name || report?.tokenMeta?.name || "";
   const tokenSymbol = report?.fileMeta?.symbol || report?.tokenMeta?.symbol || "";
@@ -89,15 +96,26 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
   const totalHolders = (report as any)?.totalHolders as number | undefined;
 
   const supply = useMemo(() => {
+    // prefer server-computed supply if available; fallback to report
+    const serverSupply = typeof summary?.supply === 'number' ? summary.supply : null;
+    if (serverSupply != null) return serverSupply;
     if (!report?.token) return null;
     const d = report.token.decimals ?? 0;
     return report.token.supply / Math.pow(10, d);
-  }, [report]);
+  }, [summary?.supply, report]);
+
+  // Use server summary values refreshed at 300ms
+  const priceUsd = useMemo(() => {
+    const p = summary?.priceUsd ?? summary?.price;
+    return typeof p === 'number' ? p : null;
+  }, [summary]);
 
   const marketCap = useMemo(() => {
-    if (price == null || supply == null) return null;
-    return price * supply;
-  }, [price, supply]);
+    const m = summary?.marketCap;
+    if (typeof m === 'number') return m;
+    if (priceUsd == null || supply == null) return null;
+    return priceUsd * supply;
+  }, [summary, priceUsd, supply]);
 
   const hasSearched = !!searchedMint;
   const canScan = isValidMint(inputMint);
@@ -138,7 +156,7 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
           <Text style={styles.emptyTitle}>Scan a Solana token</Text>
           <Text style={styles.emptySubtitle}>Get safety score, top holders, supply and live price.</Text>
         </View>
-      ) : (reportLoading || (!report && priceLoading)) ? (
+      ) : (reportLoading || (!report && summaryLoading)) ? (
         <View>
           <View style={styles.skeletonHeader} />
           <View style={styles.metricsRow}>
@@ -148,9 +166,9 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
           </View>
           <View style={styles.skeletonBadges} />
         </View>
-      ) : (reportError || priceError) ? (
+      ) : (reportError || summaryError) ? (
         <View style={styles.centerWrap}>
-          <Text style={styles.error}>Failed: {String(reportError || priceError)}</Text>
+          <Text style={styles.error}>Failed: {String(reportError || summaryError)}</Text>
           <Text style={styles.muted}>CORS? Try running over HTTPS or a proxy.</Text>
         </View>
       ) : (
@@ -199,7 +217,7 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
 
           {/* Key metrics */}
           <View style={styles.metricsRow}>
-            <Metric label="Price" value={price != null ? `$${formatNumber(price)}` : "—"} icon="💸" emphasis />
+            <Metric label="Price" value={priceUsd != null ? `$${formatNumber(priceUsd)}` : "—"} icon="💸" emphasis />
             <Metric label="Market Cap" value={marketCap != null ? `$${formatCompact(marketCap)}` : "—"} icon="🏦" />
             <Metric label="Supply" value={supply != null ? formatCompact(supply) : "—"} icon="💰" />
           </View>
@@ -235,7 +253,7 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
             mint={searchedMint!}
             name={tokenName || undefined}
             symbol={tokenSymbol || undefined}
-            currentPrice={price ?? null}
+            currentPrice={priceUsd ?? null}
             marketCap={marketCap ?? null}
           />
         </>
@@ -268,9 +286,9 @@ function formatNumber(n: number) {
 
 function formatCompact(n: number) {
   const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toFixed(2) + "B";
-  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(2) + "M";
-  if (abs >= 1_000) return (n / 1_000).toFixed(2) + "K";
+  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + "B";
+  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(1) + "M";
+  if (abs >= 1_000) return (n / 1_000).toFixed(1) + "K";
   return n.toLocaleString();
 }
 

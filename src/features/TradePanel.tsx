@@ -11,131 +11,7 @@ import { type } from "../theme/typography";
 // Simple SVG-like chart component using View elements
 // (Removed MiniChart; replaced by CandleChart)
 
-// Simple candlestick chart using View elements (TradingView-like interactions)
-function CandleChart({ candles, height, width }: { candles: Array<{ t:number; o:number; h:number; l:number; c:number }>, height: number, width: number }) {
-  if (!candles.length || width <= 0) return null;
-  const highs = candles.map(c => c.h);
-  const lows = candles.map(c => c.l);
-  const baseMin = Math.min(...lows);
-  const baseMax = Math.max(...highs);
-  const baseRange = baseMax - baseMin || 1;
-  // Add a small vertical padding so extremes aren't touching edges
-  const pad = baseRange * 0.05;
-  const globalMin = baseMin - pad;
-  const globalMax = baseMax + pad;
-  const range = globalMax - globalMin || 1;
-  const paddingX = 10;
-  const innerW = Math.max(0, width - paddingX * 2);
-  const candleGap = 4;
-  const candleSlot = candles.length > 0 ? innerW / candles.length : innerW;
-  const bodyWidth = Math.max(4, Math.min(18, candleSlot - candleGap));
-
-  function y(v: number) { return height - ((v - globalMin) / range) * height; }
-
-  const last = candles[candles.length - 1];
-  const lastY = y(last.c);
-  const upColor = colors.success;
-  const downColor = colors.sell;
-  const gridColor = 'rgba(255,255,255,0.06)';
-  const [cross, setCross] = useState<{ x:number; y:number; idx:number } | null>(null);
-
-  // Interactions
-  function handleMove(e: any) {
-    const x = e.nativeEvent.locationX as number;
-    const yPos = e.nativeEvent.locationY as number;
-    const paddingX = 10;
-    const innerW = Math.max(0, width - paddingX * 2);
-    const candleSlot = candles.length > 0 ? innerW / candles.length : innerW;
-    const idx = Math.max(0, Math.min(candles.length - 1, Math.floor((x - paddingX) / candleSlot)));
-    setCross({ x, y: yPos, idx });
-  }
-  function handleRelease() { setCross(null); }
-
-  return (
-    <View
-      style={{ height, width, position: 'relative', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}
-      onStartShouldSetResponder={() => true}
-      onResponderGrant={handleMove}
-      onResponderMove={handleMove}
-      onResponderRelease={handleRelease}
-      onResponderTerminate={handleRelease}
-    >
-      {/* Grid lines */}
-      {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-        <View key={`grid-${i}`} style={{ position: 'absolute', left: 0, right: 0, top: height * ratio, height: 1, backgroundColor: gridColor }} />
-      ))}
-
-      {/* Candles */}
-      {candles.map((c, i) => {
-        const x = paddingX + i * candleSlot + (candleSlot - bodyWidth) / 2;
-        const yHigh = y(c.h);
-        const yLow = y(c.l);
-        const yOpen = y(c.o);
-        const yClose = y(c.c);
-        const isUp = c.c >= c.o;
-        const bodyTop = Math.min(yOpen, yClose);
-        const bodyHeight = Math.max(2, Math.abs(yOpen - yClose));
-        const color = isUp ? upColor : downColor;
-        return (
-          <View key={i} style={{ position: 'absolute', left: x, top: 0 }}>
-            {/* Wick */}
-            <View style={{ position: 'absolute', left: (bodyWidth/2)-0.5, top: yHigh, width: 1, height: Math.max(1, yLow - yHigh), backgroundColor: color, opacity: 0.9 }} />
-            {/* Body */}
-            <View style={{ position: 'absolute', left: 0, top: bodyTop, width: bodyWidth, height: bodyHeight, backgroundColor: color, borderRadius: 2, opacity: 0.95, borderWidth: 1, borderColor: color+'80' }} />
-          </View>
-        );
-      })}
-
-      {/* Crosshair */}
-      {cross && (
-        <>
-          <View style={{ position: 'absolute', top: 0, bottom: 0, left: cross.x, width: 1, backgroundColor: 'rgba(255,255,255,0.25)' }} />
-          <View style={{ position: 'absolute', left: 0, right: 0, top: cross.y, height: 1, backgroundColor: 'rgba(255,255,255,0.25)' }} />
-          {/* Tooltip */}
-          <View style={{ position: 'absolute', left: Math.min(width - 160, Math.max(6, cross.x + 6)), top: Math.max(6, Math.min(height - 70, cross.y + 6)), backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 6, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
-            {(() => { const c = candles[cross.idx]; const t = new Date(c.t).toLocaleTimeString(); return (
-              <>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>{t}</Text>
-                <Text style={{ color: '#fff', fontSize: 10 }}>O {c.o.toFixed(6)}  H {c.h.toFixed(6)}</Text>
-                <Text style={{ color: '#fff', fontSize: 10 }}>L {c.l.toFixed(6)}  C {c.c.toFixed(6)}</Text>
-              </>
-            ); })()}
-          </View>
-        </>
-      )}
-
-      {/* Last price line and tag */}
-      <View style={{ position: 'absolute', left: 0, right: 0, top: lastY, height: 1, backgroundColor: 'rgba(255,255,255,0.2)' }} />
-      <View style={{ position: 'absolute', right: 6, top: Math.max(4, Math.min(height - 18, lastY - 8)), paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: 'rgba(0,0,0,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
-        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>${last.c.toFixed(8)}</Text>
-      </View>
-
-      {/* Min/Max labels */}
-      <Text style={{ position: 'absolute', top: 4, right: 8, color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600' }}>
-        ${baseMax.toFixed(8)}
-      </Text>
-      <Text style={{ position: 'absolute', bottom: 4, right: 8, color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600' }}>
-        ${baseMin.toFixed(8)}
-      </Text>
-
-      {/* Time axis labels (first, mid, last) */}
-      {(() => {
-        const first = candles[0];
-        const mid = candles[Math.floor(candles.length/2)];
-        const lastC = candles[candles.length-1];
-        const labelStyle = { position: 'absolute' as const, bottom: 2, color: 'rgba(255,255,255,0.6)', fontSize: 9 };
-        const px = (i:number) => paddingX + i * (innerW / candles.length);
-        return (
-          <>
-            <Text style={[labelStyle, { left: px(0) }]}>{new Date(first.t).toLocaleTimeString()}</Text>
-            <Text style={[labelStyle, { left: Math.max(0, Math.min(width-60, px(Math.floor(candles.length/2)))) }]}>{new Date(mid.t).toLocaleTimeString()}</Text>
-            <Text style={[labelStyle, { right: 6 }]}>{new Date(lastC.t).toLocaleTimeString()}</Text>
-          </>
-        );
-      })()}
-    </View>
-  );
-}
+// Chart component removed per request
 
 export function TradePanel({
   mint,
@@ -171,7 +47,6 @@ export function TradePanel({
   
   // Price tracking for chart
   const [priceHistory, setPriceHistory] = useState<{timestamp: number, price: number}[]>([]);
-  const [chartWidth, setChartWidth] = useState<number>(0);
   const trackingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const effPrice = useMemo(() => (currentPrice ?? 0), [currentPrice]);
@@ -194,6 +69,18 @@ export function TradePanel({
   const canBuy = !!mint && effPrice > 0 && effectiveQty > 0 && totalCost <= balance;
   const canSell = qtyHeld > 0;
 
+  // Live percent change based on last two price samples; fallback to entry avgPrice
+  const changePct = useMemo(() => {
+    const n = priceHistory.length;
+    if (n >= 2) {
+      const prev = priceHistory[n-2].price;
+      const curr = priceHistory[n-1].price;
+      if (prev > 0) return ((curr - prev) / prev) * 100;
+    }
+    if (avgPrice > 0 && currentPrice) return ((currentPrice - avgPrice) / avgPrice) * 100;
+    return null;
+  }, [priceHistory, avgPrice, currentPrice]);
+
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState<'buy'|'sell'|null>(null);
   const [captureMsg, setCaptureMsg] = useState<string | null>(null);
@@ -204,9 +91,9 @@ export function TradePanel({
   const fmtCompact = (n: number) => {
     if (!isFinite(n)) return '$0.00';
     const abs = Math.abs(n);
-    if (abs >= 1e9) return `$${(n/1e9).toFixed(2)}B`;
-    if (abs >= 1e6) return `$${(n/1e6).toFixed(2)}M`;
-    if (abs >= 1e3) return `$${(n/1e3).toFixed(2)}K`;
+    if (abs >= 1e9) return `$${(n/1e9).toFixed(1)}B`;
+    if (abs >= 1e6) return `$${(n/1e6).toFixed(1)}M`;
+    if (abs >= 1e3) return `$${(n/1e3).toFixed(1)}K`;
     return `$${n.toFixed(2)}`;
   };
   const estBoughtMCap = useMemo(() => {
@@ -214,7 +101,7 @@ export function TradePanel({
     return marketCap * (avgPrice / currentPrice);
   }, [marketCap, avgPrice, currentPrice]);
   
-  // Track price every second when a price is available (show chart even without holding)
+  // Track price frequently when a price is available (show chart even without holding)
   useEffect(() => {
     // reset history when mint changes
     setPriceHistory([]);
@@ -224,12 +111,14 @@ export function TradePanel({
     if (currentPrice) {
       if (!trackingInterval.current) {
         trackingInterval.current = setInterval(() => {
-          // push latest price snapshot
-          setPriceHistory(prev => ([
-            ...prev,
-            { timestamp: Date.now(), price: currentPrice }
-          ].slice(-60)));
-        }, 1000);
+          // push latest price snapshot and keep last 60s window
+          const now = Date.now();
+          setPriceHistory(prev => {
+            const next = [...prev, { timestamp: now, price: currentPrice }];
+            const cutoff = now - 60_000; // 60s
+            return next.filter(p => p.timestamp >= cutoff);
+          });
+        }, 300);
       }
     } else {
       if (trackingInterval.current) {
@@ -246,27 +135,7 @@ export function TradePanel({
     };
   }, [currentPrice]);
 
-  // Build OHLC candles from priceHistory using time buckets
-  const bucketMs = 5_000;
-  const candles = useMemo(() => {
-    const byBucket: Record<string, { t:number; o:number; h:number; l:number; c:number } & { idx: number }> = {};
-    const ordered = priceHistory.slice().sort((a,b)=>a.timestamp-b.timestamp);
-    for (const p of ordered) {
-      const bucket = Math.floor(p.timestamp / bucketMs) * bucketMs;
-      const key = String(bucket);
-      if (!byBucket[key]) {
-        byBucket[key] = { t: bucket, o: p.price, h: p.price, l: p.price, c: p.price, idx: bucket };
-      } else {
-        const b = byBucket[key];
-        b.h = Math.max(b.h, p.price);
-        b.l = Math.min(b.l, p.price);
-        b.c = p.price;
-      }
-    }
-    const arr = Object.values(byBucket).sort((a,b)=>a.idx-b.idx).map(({t,o,h,l,c})=>({t,o,h,l,c}));
-    // Keep last N candles to fit width (fallback to 60 like priceHistory)
-    return arr.slice(-60);
-  }, [priceHistory]);
+  // Chart removed: no OHLC bucketing needed
 
   async function onBuy() {
     if (!canBuy) return;
@@ -383,7 +252,13 @@ export function TradePanel({
         <View style={styles.headerGradient} />
         <View style={{ flex: 1, zIndex: 1 }}>
           <Text style={styles.tokenTitle}>{symbol || name || mint.slice(0,4)+"…"+mint.slice(-4)}</Text>
-          <Text style={styles.tokenPrice}>{currentPrice != null ? `$${currentPrice.toFixed(8)}` : '—'}</Text>
+          <Text style={styles.priceLabel}> Price</Text>
+          <Text style={styles.tokenPrice}>{currentPrice != null ? `$${currentPrice.toFixed(7)}` : '—'}</Text>
+          {typeof changePct === 'number' && isFinite(changePct) && (
+            <Text style={[styles.percentChange, changePct >= 0 ? styles.up : styles.down]}>
+              {changePct >= 0 ? '▲ +' : '▼ -'}{Math.abs(changePct).toFixed(2)}%
+            </Text>
+          )}
           {(marketCap || estBoughtMCap) && (
             <View style={styles.marketRow}>
               {typeof marketCap === 'number' && (
@@ -523,37 +398,7 @@ export function TradePanel({
 
       {error ? <Text style={styles.error}>Failed to load trading state</Text> : null}
 
-      {/* Live Price Chart */}
-      {priceHistory.length > 1 && (
-        <>
-          <View style={styles.divider} />
-          <Text style={styles.section}>Live Price Chart</Text>
-          <View style={styles.chartContainer} onLayout={(e) => setChartWidth(e.nativeEvent.layout.width)}>
-            <CandleChart
-              candles={candles}
-              height={180}
-              width={chartWidth || (typeof window !== 'undefined' ? Math.max(240, Math.min(900, window.innerWidth - 100)) : 300)}
-            />
-            <View style={styles.chartStats}>
-              <View style={styles.chartStat}>
-                <Text style={styles.chartStatLabel}>Entry</Text>
-                <Text style={styles.chartStatValue}>${avgPrice.toFixed(8)}</Text>
-              </View>
-              <View style={styles.chartStat}>
-                <Text style={styles.chartStatLabel}>Current</Text>
-                <Text style={[styles.chartStatValue, { color: colors.accent }]}>${currentPrice?.toFixed(8)}</Text>
-              </View>
-              <View style={styles.chartStat}>
-                <Text style={styles.chartStatLabel}>Change</Text>
-                <Text style={[styles.chartStatValue, pnl >= 0 ? styles.up : styles.down]}>
-                  {pnl >= 0 ? '+' : ''}{((currentPrice! - avgPrice) / avgPrice * 100).toFixed(2)}%
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.chartTime}>{priceHistory.length}s tracked</Text>
-          </View>
-        </>
-      )}
+      {/* Chart preview removed per request */}
 
       {/* Per-token activity (beautiful mini history) */}
       {Array.isArray(data?.history) && data!.history.some(h => h.mint === mint) && (
@@ -653,6 +498,18 @@ const styles = StyleSheet.create({
     textShadowColor: colors.accent + '40',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
+  },
+  priceLabel: {
+    color: colors.textSecondary,
+    fontSize: type.label,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  percentChange: {
+    marginTop: 4,
+    fontSize: type.body,
+    fontWeight: '900',
   },
   subMeta: {
     color: colors.textPrimary,
