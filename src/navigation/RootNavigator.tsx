@@ -15,7 +15,7 @@ export default function RootNavigator() {
         {route === "dashboard" ? (
           <DashboardScreen />
         ) : (
-          <ProfileScreen onBack={() => setRoute("dashboard")} />
+          <ProfileScreen />
         )}
       </View>
       <TabBar route={route} onChange={setRoute} />

@@ -9,7 +9,7 @@ import { api } from "../api/client";
 import { useEffect, useMemo, useState } from "react";
 import { exportProfileHistoryPdf } from "../lib/pdfExport";
 
-export function ProfileScreen({ onBack }: { onBack: () => void }) {
+export function ProfileScreen() {
   const { data, mutate, isLoading, error } = useSWR("/state", api.getState, {
     refreshInterval: 5000,
     revalidateOnFocus: true,
