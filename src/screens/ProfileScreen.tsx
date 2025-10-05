@@ -8,6 +8,7 @@ import useSWR from "swr";
 import { api } from "../api/client";
 import { useEffect, useMemo, useState } from "react";
 import { exportProfileHistoryPdf } from "../lib/pdfExport";
+import { useRef } from "react";
 
 export function ProfileScreen() {
   const { data, mutate, isLoading, error } = useSWR("/state", api.getState, {
@@ -29,6 +30,9 @@ export function ProfileScreen() {
   const [toast, setToast] = useState<string | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [captureMsg, setCaptureMsg] = useState<string | null>(null);
+  const panelRef = useRef<View | null>(null);
 
   useEffect(() => {
     // sync inputs when state arrives/refetches
@@ -45,6 +49,64 @@ export function ProfileScreen() {
     setEditMode(false);
     setToast("Profile saved");
     setTimeout(() => setToast(null), 1500);
+  }
+
+  // Web-only: dynamic load html2canvas and capture profile area referenced by panelRef
+  async function ensureHtml2Canvas(): Promise<any> {
+    if (typeof window === 'undefined') throw new Error('Not supported');
+    const w = window as any;
+    if (w.html2canvas) return w.html2canvas;
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('html2canvas failed to load'));
+      document.head.appendChild(script);
+    });
+    return (window as any).html2canvas;
+  }
+
+  async function captureProfile(mode: 'copy' | 'download') {
+    try {
+      setIsCapturing(true);
+      setCaptureMsg(null);
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      if (typeof window === 'undefined') throw new Error('Capture only supported on web');
+      const html2canvas = await ensureHtml2Canvas();
+      const node = (panelRef.current as unknown as HTMLElement) || document.body;
+      const canvas = await html2canvas(node, { backgroundColor: colors.background });
+      if (mode === 'download') {
+        const link = document.createElement('a');
+        link.download = `${(name || 'profile')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        setCaptureMsg('Screenshot downloaded');
+        setTimeout(() => setCaptureMsg(null), 1800);
+      } else {
+        const blob: Blob | null = await new Promise(resolve => canvas.toBlob(resolve as any));
+        if (!blob) throw new Error('Failed to create image');
+        if ((navigator as any).clipboard && (window as any).ClipboardItem) {
+          await (navigator as any).clipboard.write([
+            new (window as any).ClipboardItem({ 'image/png': blob })
+          ]);
+          setCaptureMsg('Image copied to clipboard');
+          setTimeout(() => setCaptureMsg(null), 1800);
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `${(name || 'profile')}.png`; a.click();
+          URL.revokeObjectURL(url);
+          setCaptureMsg('Screenshot downloaded');
+          setTimeout(() => setCaptureMsg(null), 1800);
+        }
+      }
+    } catch (e: any) {
+      setCaptureMsg(e?.message || 'Capture failed');
+      setTimeout(() => setCaptureMsg(null), 2200);
+    } finally {
+      setIsCapturing(false);
+    }
   }
 
   async function copyToClipboard(text: string) {
@@ -476,12 +538,23 @@ export function ProfileScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View ref={panelRef as any}>
       <View style={styles.headerRow}>
         <Text style={styles.h1}>Profile</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <Pressable onPress={onExportPdf} disabled={isExporting} style={[styles.pillBtn, isExporting && styles.btnDisabled]}>
             <Text style={[styles.pillBtnText, isExporting && { color: colors.textSecondary }]}>{isExporting ? 'Exporting…' : 'Export PDF'}</Text>
           </Pressable>
+          {!isCapturing && (
+            <View style={styles.captureBar}>
+              <Pressable onPress={() => captureProfile('copy')} style={[styles.pillBtn, styles.ghostPill]}>
+                <Text style={styles.pillBtnText}>Copy</Text>
+              </Pressable>
+              <Pressable onPress={() => captureProfile('download')} style={[styles.pillBtn, styles.pillBtnActive]}>
+                <Text style={[styles.pillBtnText, styles.pillBtnTextActive]}>Download</Text>
+              </Pressable>
+            </View>
+          )}
           <Pressable onPress={() => setShowResetModal(true)} style={[styles.pillBtn, styles.pillBtnActive]}>
             <Text style={[styles.pillBtnText, styles.pillBtnTextActive]}>Reset</Text>
           </Pressable>
@@ -640,10 +713,14 @@ export function ProfileScreen() {
       
 
       {/* Back button removed per request */}
+      </View>
 
       {/* Toast */}
       {toast && (
         <View style={styles.toast}><Text style={styles.toastText}>{toast}</Text></View>
+      )}
+      {captureMsg && (
+        <View style={styles.toast}><Text style={styles.toastText}>{captureMsg}</Text></View>
       )}
 
       {/* Confirm Reset Modal */}
@@ -683,6 +760,7 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   subtitle: { color: colors.textSecondary, fontSize: 16 },
+  captureBar: { flexDirection: 'row', gap: 8 },
   row: { flexDirection: "row", gap: spacing.sm },
   banner: {
     padding: spacing.md,
