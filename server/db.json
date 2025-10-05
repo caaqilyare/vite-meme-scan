@@ -1,0 +1,530 @@
+{
+  "user": {
+    "name": "Munasar",
+    "balance": 371.997585
+  },
+  "positions": {},
+  "history": [
+    {
+      "id": "1759589146125-54450046f453e",
+      "ts": 1759589146126,
+      "side": "sell",
+      "mint": "8GqnbAq84VFTNZZkNZV9sf7obDwUEucUvj3kUWFTpump",
+      "name": "PepeUnicornMagicPibble",
+      "symbol": "PUMP",
+      "price": 0.00005290420128883667,
+      "qty": 2901086.288969,
+      "value": 153.479653,
+      "fee": 4.3,
+      "marketCap": 52904.187761526446
+    },
+    {
+      "id": "1759588914850-c3b567f979ce9",
+      "ts": 1759588914850,
+      "side": "buy",
+      "mint": "8GqnbAq84VFTNZZkNZV9sf7obDwUEucUvj3kUWFTpump",
+      "name": "PepeUnicornMagicPibble",
+      "symbol": "PUMP",
+      "price": 0.00004308730852828634,
+      "qty": 2901086.2889692653,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 43087.29751110103
+    },
+    {
+      "id": "1759583910161-b48a75e78f9c4",
+      "ts": 1759583910161,
+      "side": "sell",
+      "mint": "Hcekdr1nt43jvAi9aznxM2jrxGNBEVK8GWnwTHoVpump",
+      "name": "The Runner",
+      "symbol": "VITALIK",
+      "price": 0.0001861079629834631,
+      "qty": 719306.858512,
+      "value": 133.868734,
+      "fee": 4.3,
+      "marketCap": 186104.93849988104
+    },
+    {
+      "id": "1759583887049-8b83eaf8b414c",
+      "ts": 1759583887049,
+      "side": "buy",
+      "mint": "Hcekdr1nt43jvAi9aznxM2jrxGNBEVK8GWnwTHoVpump",
+      "name": "The Runner",
+      "symbol": "VITALIK",
+      "price": 0.0001737784069771623,
+      "qty": 719306.8585122161,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 173775.58286404866
+    },
+    {
+      "id": "1759583773599-ccce72bf0613f",
+      "ts": 1759583773599,
+      "side": "sell",
+      "mint": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump",
+      "name": "Constantly On Pumpfun Everyday",
+      "symbol": "COPE",
+      "price": 0.00001769792262694946,
+      "qty": 4498468.82233,
+      "value": 79.613553,
+      "fee": 4.3,
+      "marketCap": 17697.836391941197
+    },
+    {
+      "id": "1759582707583-3b17e9f973d74",
+      "ts": 1759582707583,
+      "side": "buy",
+      "mint": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump",
+      "name": "Constantly On Pumpfun Everyday",
+      "symbol": "COPE",
+      "price": 0.000027787232708942587,
+      "qty": 4498468.822329762,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 27787.098564552613
+    },
+    {
+      "id": "1759582704296-a85adb17de9da",
+      "ts": 1759582704296,
+      "side": "sell",
+      "mint": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump",
+      "name": "Constantly On Pumpfun Everyday",
+      "symbol": "COPE",
+      "price": 0.000029145728461923534,
+      "qty": 3039423.909679,
+      "value": 88.586224,
+      "fee": 4.3,
+      "marketCap": 29145.5877593208
+    },
+    {
+      "id": "1759582460066-6ff4bab10e51c",
+      "ts": 1759582460066,
+      "side": "buy",
+      "mint": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump",
+      "name": "Constantly On Pumpfun Everyday",
+      "symbol": "COPE",
+      "price": 0.000041126214609931516,
+      "qty": 3039423.9096786194,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 41126.0160708748
+    },
+    {
+      "id": "1759582110643-4c413eb6ea01a",
+      "ts": 1759582110643,
+      "side": "sell",
+      "mint": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump",
+      "name": "Constantly On Pumpfun Everyday",
+      "symbol": "COPE",
+      "price": 0.00005703620928383154,
+      "qty": 3027916.769537,
+      "value": 172.700895,
+      "fee": 4.3,
+      "marketCap": 57036.20928383154
+    },
+    {
+      "id": "1759582025112-7b32b74daab7",
+      "ts": 1759582025112,
+      "side": "buy",
+      "mint": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump",
+      "name": "Constantly On Pumpfun Everyday",
+      "symbol": "COPE",
+      "price": 0.00004128250857408146,
+      "qty": 3027916.769536607,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 41282.508574081454
+    },
+    {
+      "id": "1759573680659-6c0682accf29a",
+      "ts": 1759573680659,
+      "side": "sell",
+      "mint": "Hcekdr1nt43jvAi9aznxM2jrxGNBEVK8GWnwTHoVpump",
+      "name": "The Runner",
+      "symbol": "VITALIK",
+      "price": 0.00006986108790378542,
+      "qty": 2215969.368164,
+      "value": 154.810031,
+      "fee": 4.3,
+      "marketCap": 69861.06225944498
+    },
+    {
+      "id": "1759573287431-b1e1008af0d96",
+      "ts": 1759573287431,
+      "side": "buy",
+      "mint": "Hcekdr1nt43jvAi9aznxM2jrxGNBEVK8GWnwTHoVpump",
+      "name": "The Runner",
+      "symbol": "VITALIK",
+      "price": 0.00005640872197776836,
+      "qty": 2215969.36816375,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 56408.72157068123
+    },
+    {
+      "id": "1759573211040-8b800beec70c8",
+      "ts": 1759573211040,
+      "side": "sell",
+      "mint": "BHtY4w1m4gHLynDxx6RwmU75bNmBadfVcVcQmyWopump",
+      "name": "penguin wif backpack",
+      "symbol": "wifbag",
+      "price": 0.00005220338839428007,
+      "qty": 3319860.500011,
+      "value": 173.307967,
+      "fee": 4.3,
+      "marketCap": 52203.38116800499
+    },
+    {
+      "id": "1759572980883-7f191dba9cca1",
+      "ts": 1759572980883,
+      "side": "buy",
+      "mint": "BHtY4w1m4gHLynDxx6RwmU75bNmBadfVcVcQmyWopump",
+      "name": "penguin wif backpack",
+      "symbol": "wifbag",
+      "price": 0.00003765218448172128,
+      "qty": 3319860.5000111694,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 37652.179269702465
+    },
+    {
+      "id": "1759569766476-03faae7ed9d4d",
+      "ts": 1759569766476,
+      "side": "sell",
+      "mint": "Dpj7deqsJQD3JDGeP1U1ECaCusLDaLdPXCGXv5qNpump",
+      "name": "Soldiers",
+      "symbol": "Soldiers",
+      "price": 0.00006988103507651478,
+      "qty": 1559625.899261,
+      "value": 108.988272,
+      "fee": 4.3,
+      "marketCap": 69881.03101280303
+    },
+    {
+      "id": "1759569201721-a1ad87e5d6ed7",
+      "ts": 1759569201721,
+      "side": "buy",
+      "mint": "Dpj7deqsJQD3JDGeP1U1ECaCusLDaLdPXCGXv5qNpump",
+      "name": "Soldiers",
+      "symbol": "Soldiers",
+      "price": 0.0000801474251352315,
+      "qty": 1559625.8992611358,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 80147.42513520634
+    },
+    {
+      "id": "1759499735328-42a170356d46b",
+      "ts": 1759499735328,
+      "side": "sell",
+      "mint": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump",
+      "name": "Billions Must Deploy",
+      "symbol": "CZ",
+      "price": 0.0000658579644702716,
+      "qty": 2710542.872626,
+      "value": 178.510836,
+      "fee": 4.3,
+      "marketCap": 65857.96447027159
+    },
+    {
+      "id": "1759499654705-d5f371b4f1858",
+      "ts": 1759499654705,
+      "side": "buy",
+      "mint": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump",
+      "name": "Billions Must Deploy",
+      "symbol": "CZ",
+      "price": 0.00005533946779253858,
+      "qty": 2710542.872626334,
+      "value": 150,
+      "fee": 4.3,
+      "marketCap": 55339.46779253858
+    },
+    {
+      "id": "1759498984290-8de48ee78d29a",
+      "ts": 1759498984290,
+      "side": "sell",
+      "mint": "DRydfynvQKJBRqafcSBzg895cCdJwttwjZDEucxPpump",
+      "name": "innovative coin",
+      "symbol": "innovative",
+      "price": 0.00008137526642719626,
+      "qty": 2363416.813246,
+      "value": 192.323673,
+      "fee": 4.3,
+      "marketCap": 81375.1952845907
+    },
+    {
+      "id": "1759498842300-826f3a705eb72",
+      "ts": 1759498842300,
+      "side": "buy",
+      "mint": "DRydfynvQKJBRqafcSBzg895cCdJwttwjZDEucxPpump",
+      "name": "innovative coin",
+      "symbol": "innovative",
+      "price": 0.00006346743374223751,
+      "qty": 2363416.813246305,
+      "value": 150,
+      "fee": 4.3,
+      "marketCap": 63467.38130015432
+    },
+    {
+      "id": "1759497934730-7c4d5f77accb2",
+      "ts": 1759497934730,
+      "side": "sell",
+      "mint": "6L8wQQmh69cdA6QVC6FtD2XGFR5UMd3pFHTe2pwgpump",
+      "name": "Ali Youre A Nice Guy",
+      "symbol": "ALI",
+      "price": 0.00011324554829241468,
+      "qty": 1489852.544801,
+      "value": 168.719168,
+      "fee": 4.3,
+      "marketCap": 113245.5476642244
+    },
+    {
+      "id": "1759497825477-c60d63ac8a59d",
+      "ts": 1759497825478,
+      "side": "buy",
+      "mint": "6L8wQQmh69cdA6QVC6FtD2XGFR5UMd3pFHTe2pwgpump",
+      "name": "Ali Youre A Nice Guy",
+      "symbol": "ALI",
+      "price": 0.00010068110466596423,
+      "qty": 1489852.544801371,
+      "value": 150,
+      "fee": 4.3,
+      "marketCap": 100681.10410747083
+    },
+    {
+      "id": "1759415337081-9a1aadb8a3be1",
+      "ts": 1759415337081,
+      "side": "sell",
+      "mint": "8wqpPeLgdusaEbpkW2HkdXAN1q5Zv5tJmXPtZ9fhpump",
+      "name": "BOLTZ",
+      "symbol": "BOLTZ",
+      "price": 0.00006366254619463771,
+      "qty": 2194787.536928,
+      "value": 139.725763,
+      "fee": 4.3,
+      "marketCap": 63662.53727610635
+    },
+    {
+      "id": "1759414990678-fb3e709ec1933",
+      "ts": 1759414990678,
+      "side": "buy",
+      "mint": "8wqpPeLgdusaEbpkW2HkdXAN1q5Zv5tJmXPtZ9fhpump",
+      "name": "BOLTZ",
+      "symbol": "BOLTZ",
+      "price": 0.00005695312092712035,
+      "qty": 2194787.5369280525,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 56953.12092706983
+    },
+    {
+      "id": "1759414840369-bd7521307b6be",
+      "ts": 1759414840369,
+      "side": "sell",
+      "mint": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump",
+      "name": "Space\r\ncoin",
+      "symbol": "Spacecoin",
+      "price": 0.000039073546916134834,
+      "qty": 4456795.699481,
+      "value": 174.142816,
+      "fee": 4.3,
+      "marketCap": 39072.438365725255
+    },
+    {
+      "id": "1759413330763-f8c7c086dc3fe",
+      "ts": 1759413330763,
+      "side": "buy",
+      "mint": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump",
+      "name": "Space\r\ncoin",
+      "symbol": "Spacecoin",
+      "price": 0.00002804705632222742,
+      "qty": 4456795.699480837,
+      "value": 125,
+      "fee": 4.3,
+      "marketCap": 28046.261058615513
+    }
+  ],
+  "activity": {
+    "move": 72,
+    "exercise": 58,
+    "stand": 8,
+    "meetings": 3,
+    "reminders": 1,
+    "nextFocusMins": 25,
+    "balanceDelta": 182
+  },
+  "lastScannedMint": "",
+  "todos": {
+    "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump": [
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-over20min",
+        "text": "Over 20 min Cool",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-rsi30",
+        "text": "Bilow 30 RSI",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-50k",
+        "text": "Bilow 50 K",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-holders250",
+        "text": "250 Holder above 300 good",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-top20pct",
+        "text": "Bilow 20 % holder",
+        "done": false
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-devsold",
+        "text": "Dev Sold",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-fee5sol",
+        "text": "Over 5 Sol Fee",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-before70k80k",
+        "text": "Before 70K or 80K",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-curve90",
+        "text": "Over Curve 90 +",
+        "done": true
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-nods",
+        "text": "No Ds",
+        "done": false
+      },
+      {
+        "id": "NquPAnXxH8ikiwsTGdG3kDCWivqV4tjijuCfEKXpump-nodummy",
+        "text": "No dummy address",
+        "done": true
+      }
+    ],
+    "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump": [
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-over20min",
+        "text": "Over 20 min Cool",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-rsi30",
+        "text": "Bilow 30 RSI",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-50k",
+        "text": "Bilow 50 K",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-holders250",
+        "text": "250 Holder above 300 good",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-top20pct",
+        "text": "Bilow 20 % holder",
+        "done": false
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-devsold",
+        "text": "Dev Sold",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-fee5sol",
+        "text": "Over 5 Sol Fee",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-before70k80k",
+        "text": "Before 70K or 80K",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-curve90",
+        "text": "Over Curve 90 +",
+        "done": true
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-nods",
+        "text": "No Ds",
+        "done": false
+      },
+      {
+        "id": "CtxW7qFDdwUK8t8uUV3gwM9r3wbVUmX11xMHeWPdpump-nodummy",
+        "text": "No dummy address",
+        "done": true
+      }
+    ],
+    "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump": [
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-over20min",
+        "text": "Over 20 min Cool",
+        "done": false
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-rsi30",
+        "text": "Bilow 30 RSI",
+        "done": true
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-50k",
+        "text": "Bilow 50 K",
+        "done": true
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-holders250",
+        "text": "250 Holder above 300 good",
+        "done": true
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-top20pct",
+        "text": "Bilow 20 % holder",
+        "done": true
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-devsold",
+        "text": "Dev Sold",
+        "done": true
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-fee5sol",
+        "text": "Over 5 Sol Fee",
+        "done": true
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-before70k80k",
+        "text": "Before 70K or 80K",
+        "done": true
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-curve90",
+        "text": "Over Curve 90 +",
+        "done": false
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-nods",
+        "text": "No Ds",
+        "done": false
+      },
+      {
+        "id": "ExEfV2K7KVzvzTrV7JwxcRAWkd3nrdAncr4r6mMwpump-nodummy",
+        "text": "No dummy address",
+        "done": true
+      }
+    ]
+  }
+}
