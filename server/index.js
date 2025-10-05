@@ -17,7 +17,7 @@ function initialState() {
     user: { name: 'Munasar', balance: 65 },
     positions: {},
     history: [],
-    activity: { move: 72, exercise: 58, stand: 8, meetings: 3, reminders: 1, nextFocusMins: 25, balanceDelta: 182 },
+    deposits: [],
     lastScannedMint: "",
     todos: {},
     // history items: { id, ts, side: 'buy'|'sell', mint, name?, symbol?, price, qty, value }
@@ -50,28 +50,17 @@ app.get('/api/state', (req, res) => {
     writeDB(db);
   }
   if (!db.history) db.history = [];
-  if (!db.activity) db.activity = { move: 72, exercise: 58, stand: 8, meetings: 3, reminders: 1, nextFocusMins: 25, balanceDelta: 182 };
+  if (!Array.isArray(db.deposits)) db.deposits = [];
   if (typeof db.lastScannedMint !== 'string') db.lastScannedMint = "";
+  // migrate legacy fields
+  if (db.activity) {
+    delete db.activity;
+    writeDB(db);
+  }
   res.json(db);
 });
 
-// update activity widgets (partial update)
-app.post('/api/activity', (req, res) => {
-  const { move, exercise, stand, meetings, reminders, nextFocusMins, balanceDelta } = req.body || {};
-  const db = readDB();
-  db.activity = {
-    ...(db.activity || {}),
-    ...(Number.isFinite(move) ? { move: Number(move) } : {}),
-    ...(Number.isFinite(exercise) ? { exercise: Number(exercise) } : {}),
-    ...(Number.isFinite(stand) ? { stand: Number(stand) } : {}),
-    ...(Number.isFinite(meetings) ? { meetings: Number(meetings) } : {}),
-    ...(Number.isFinite(reminders) ? { reminders: Number(reminders) } : {}),
-    ...(Number.isFinite(nextFocusMins) ? { nextFocusMins: Number(nextFocusMins) } : {}),
-    ...(Number.isFinite(balanceDelta) ? { balanceDelta: Number(balanceDelta) } : {}),
-  };
-  writeDB(db);
-  res.json(db);
-});
+// (activity removed)
 
 // persist last scanned mint
 app.post('/api/last-scanned', (req, res) => {
@@ -107,6 +96,9 @@ app.post('/api/deposit', (req, res) => {
   const db = readDB();
   const bal = Number(db?.user?.balance ?? 0) + amt;
   db.user = { ...(db.user || { name: 'caaqil' }), balance: Number(bal.toFixed(6)) };
+  // record deposit
+  const entry = { ts: Date.now(), amount: Number(amt.toFixed(6)) };
+  db.deposits = Array.isArray(db.deposits) ? [{ ...entry }, ...db.deposits].slice(0, 200) : [entry];
   writeDB(db);
   res.json(db);
 });

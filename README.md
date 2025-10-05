@@ -34,6 +34,10 @@ Then in Termux:
    ```bash
    npm install
    ```
+   if denied then use
+   ```bash
+   npm install --force
+   ```
 5. Development mode (two panes):
    - Pane A: Build server
      ```bash
@@ -118,7 +122,51 @@ Client config: `vite.config.ts` maps `react-native` to `react-native-web` and pr
 
 ---
 
-## 7) Acknowledgements
+## 7) Update to latest (GitHub)
+
+When a new version is pushed to GitHub, update your local copy and restart services.
+
+Desktop (macOS/Windows/Linux):
+```bash
+git pull origin main
+npm install           # only if package updates
+npm run build         # production build
+npm run server        # serves API and built frontend at http://127.0.0.1:3001
+```
+
+Development mode after update:
+```bash
+git pull origin main
+npm install
+npm run server        # pane A - API (http://127.0.0.1:3001)
+npm run dev           # pane B - Web (http://127.0.0.1:5173)
+```
+
+Termux (Android):
+```bash
+cd ~/vite-meme-scan
+git pull origin main
+npm install
+
+# Production
+npm run build
+npm run server        # open http://127.0.0.1:3001
+
+# Or Development (two sessions)
+# Session A:
+npm run server
+# Session B:
+npm run dev
+```
+
+Notes:
+- After server changes, fully restart the server process to load new code.
+- If the data format changed, opening the app (or calling `/api/state`) once may migrate the local `server/db.json` automatically.
+- If ports are busy, change with `PORT=3002 npm run server` and update URLs accordingly.
+
+---
+
+## 8) Acknowledgements
 - Author: **Munasar**
 - Built with Vite, React, TypeScript, React Native Web.
 

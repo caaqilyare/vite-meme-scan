@@ -2,6 +2,7 @@ export type AppState = {
   user: { name: string; balance: number };
   positions: Record<string, { qty: number; avgPrice: number; name?: string; symbol?: string }>;
   history: Array<{ id: string; ts: number; side: 'buy'|'sell'; mint: string; name?: string; symbol?: string; price: number; qty: number; value: number; marketCap?: number }>;
+  deposits?: Array<{ ts: number; amount: number }>;
   activity?: { move: number; exercise: number; stand: number; meetings: number; reminders: number; nextFocusMins: number; balanceDelta: number };
   lastScannedMint?: string;
   todos?: Record<string, Array<{ id: string; text: string; done: boolean }>>;

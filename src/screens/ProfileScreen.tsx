@@ -28,37 +28,14 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
   const [historySort, setHistorySort] = useState<'recent'|'pnl'|'alpha'>('recent');
   const [toast, setToast] = useState<string | null>(null);
   const [showResetModal, setShowResetModal] = useState(false);
-  const [deposits, setDeposits] = useState<Array<{ ts: number; amount: number }>>([]);
   const [isExporting, setIsExporting] = useState(false);
-  const [manualPnlStr, setManualPnlStr] = useState<string>("");
 
   useEffect(() => {
     // sync inputs when state arrives/refetches
     setNameInput(name);
   }, [name]);
 
-  // Load deposits log from localStorage
-  useEffect(() => {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        const raw = localStorage.getItem('depositLog');
-        if (raw) setDeposits(JSON.parse(raw));
-        const pnl = localStorage.getItem('manualPnl');
-        if (pnl != null) setManualPnlStr(pnl);
-      }
-    } catch {}
-  }, []);
-
-  function addDepositLog(amount: number) {
-    try {
-      const entry = { ts: Date.now(), amount };
-      const next = [entry, ...deposits].slice(0, 50);
-      setDeposits(next);
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('depositLog', JSON.stringify(next));
-      }
-    } catch {}
-  }
+  // No manual PnL override; PnL is computed automatically from history
 
   async function onSaveName() {
     const n = (nameInput || "").trim();
@@ -110,7 +87,7 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
       setIsExporting(true);
       await exportProfileHistoryPdf({
         user: { name: data?.user?.name ?? '', balance: data?.user?.balance ?? 0 },
-        deposits,
+        deposits: (data?.deposits ?? []) as Array<{ ts: number; amount: number }>,
         history: (data?.history || []).map(h => ({
           id: h.id,
           ts: h.ts,
@@ -123,7 +100,7 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
           symbol: (h as any).symbol,
           marketCap: (h as any).marketCap,
         })),
-        totalPnlOverride: displayPnl,
+        totalPnlOverride: totalRealizedPnl,
       });
       setToast('PDF exported');
       setTimeout(() => setToast(null), 1500);
@@ -148,11 +125,7 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
     }
     return Number(total.toFixed(2));
   }, [data?.history]);
-  const manualPnl = useMemo(() => {
-    const n = Number(manualPnlStr);
-    return Number.isFinite(n) ? n : null;
-  }, [manualPnlStr]);
-  const displayPnl = manualPnl ?? totalRealizedPnl;
+  // Realized PnL is computed automatically
   const winRate = useMemo(() => {
     const hist = (data?.history || []).slice().sort((a,b)=>a.ts-b.ts);
     const avgByMint: Record<string, { qty: number; avg: number }> = {};
@@ -499,7 +472,6 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
     setDepositAmt("");
     setToast("Funds added");
     setTimeout(() => setToast(null), 1500);
-    addDepositLog(amt);
   }
 
   return (
@@ -543,7 +515,7 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
             <Stat label="Balance" value={`$${balance.toFixed(2)}`} />
             <Stat label="Buys" value={`${totalBuys}`} />
             <Stat label="Win Rate" value={`${Math.round(winRate * 100)}%`} />
-            <Stat label="Realized PnL" value={`${displayPnl>=0?'+':''}$${Math.abs(displayPnl).toFixed(2)}`} />
+            <Stat label="Realized PnL" value={`${totalRealizedPnl>=0?'+':''}$${Math.abs(totalRealizedPnl).toFixed(2)}`} />
           </View>
         </Card>
       )}
@@ -569,11 +541,19 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
             <Pressable onPress={onSaveName} disabled={nameInput.trim().length < 2} style={[styles.primaryBtn, nameInput.trim().length < 2 && styles.btnDisabled]}>
               <Text style={styles.primaryBtnText}>Save</Text>
             </Pressable>
+            <Pressable onPress={() => { setEditMode(false); setNameInput(name); }} style={[styles.pillBtn]}>
+              <Text style={styles.pillBtnText}>Cancel</Text>
+            </Pressable>
           </View>
         ) : (
-          <View style={styles.kvRow}>
+          <View style={[styles.kvRow, { alignItems: 'center' }]}>
             <Text style={styles.kLabel}>Name</Text>
-            <Text style={styles.kValue}>{name || "—"}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.kValue}>{name || "—"}</Text>
+              <Pressable onPress={() => { setEditMode(true); setNameInput(name); }} style={[styles.pillBtn]}>
+                <Text style={styles.pillBtnText}>Edit</Text>
+              </Pressable>
+            </View>
           </View>
         )}
 
@@ -583,24 +563,7 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
         </View>
         <View style={styles.kvRow}>
           <Text style={styles.kLabel}>Realized PnL</Text>
-          <Text style={[styles.kValue, displayPnl>=0 ? styles.up : styles.down]}>{`${displayPnl>=0?'+':''}$${Math.abs(displayPnl).toFixed(2)}`}</Text>
-        </View>
-        {/* Optional: manual PnL override */}
-        <View style={styles.formRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.inputLabel}>Override PnL (optional)</Text>
-            <TextInput
-              value={manualPnlStr}
-              onChangeText={(t) => {
-                setManualPnlStr(t);
-                try { if (typeof localStorage !== 'undefined') localStorage.setItem('manualPnl', t); } catch {}
-              }}
-              placeholder="$0.00"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numeric"
-              style={styles.input}
-            />
-          </View>
+          <Text style={[styles.kValue, totalRealizedPnl>=0 ? styles.up : styles.down]}>{`${totalRealizedPnl>=0?'+':''}$${Math.abs(totalRealizedPnl).toFixed(2)}`}</Text>
         </View>
         <View style={styles.formRow}>
           <View style={{ flex: 1 }}>
@@ -629,15 +592,18 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
           ) : (
             <Card variant="glass">
               {/* Deposits list */}
-              {deposits.length > 0 && (
+              {(data?.deposits && data.deposits.length > 0) && (
                 <>
                   <View style={styles.historyHeaderRow}>
                     <Text style={styles.cardTitle}>Deposits</Text>
                   </View>
-                  {deposits.slice(0, 10).map((d, i) => (
+                  {(data.deposits as Array<{ ts: number; amount: number }> ).slice(0, 10).map((d: { ts: number; amount: number }, i: number) => (
                     <View key={i} style={styles.activityRow}>
                       <Text style={[styles.activityPill, styles.buyPill]}>DEPOSIT</Text>
-                      <Text style={styles.activityText}>{new Date(d.ts).toLocaleString()}</Text>
+                      <View style={{ flex: 1, marginLeft: 8 }}>
+                        <Text style={styles.activityMain}>You deposited ${d.amount.toFixed(2)}</Text>
+                        <Text style={styles.activitySub}>{new Date(d.ts).toLocaleString()}</Text>
+                      </View>
                       <Text style={styles.activityValue}>+${d.amount.toFixed(2)}</Text>
                     </View>
                   ))}
@@ -671,15 +637,9 @@ export function ProfileScreen({ onBack }: { onBack: () => void }) {
         </>
       )}
 
-      {/* Bottom Reset button */}
-      <Pressable onPress={() => setShowResetModal(true)} style={[styles.secondaryBtn, styles.resetBtn]}>
-        <Text style={[styles.secondaryBtnText, styles.resetBtnText]}>Reset all data</Text>
-      </Pressable>
+      
 
-      {/* Back */}
-      <Pressable onPress={onBack} style={styles.secondaryBtn}>
-        <Text style={styles.secondaryBtnText}>Back to Dashboard</Text>
-      </Pressable>
+      {/* Back button removed per request */}
 
       {/* Toast */}
       {toast && (
