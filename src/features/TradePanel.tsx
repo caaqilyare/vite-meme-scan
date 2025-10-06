@@ -41,22 +41,20 @@ export function TradePanel({
     return (currentPrice - avgPrice) * qtyHeld;
   }, [currentPrice, avgPrice, qtyHeld]);
 
-  const [qty, setQty] = useState(0);
   const [usd, setUsd] = useState<number>(0);
-  const [mode, setMode] = useState<'qty'|'usd'>('qty');
+  const [selectedPct, setSelectedPct] = useState<number | null>(null);
   
   // Price tracking for chart
   const [priceHistory, setPriceHistory] = useState<{timestamp: number, price: number}[]>([]);
   const trackingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const effPrice = useMemo(() => (currentPrice ?? 0), [currentPrice]);
-  const TX_FEE = 4.3;
+  const TX_FEE = 0.35;
 
   const effectiveQty = useMemo(() => {
-    if (mode === 'qty') return qty;
     if (!effPrice) return 0;
     return (usd || 0) / effPrice;
-  }, [mode, qty, usd, effPrice]);
+  }, [usd, effPrice]);
 
   const totalCost = useMemo(() => {
     if (!effPrice || !effectiveQty) return 0;
@@ -80,6 +78,13 @@ export function TradePanel({
     if (avgPrice > 0 && currentPrice) return ((currentPrice - avgPrice) / avgPrice) * 100;
     return null;
   }, [priceHistory, avgPrice, currentPrice]);
+
+  // Profit percentage relative to average entry price (only when holding)
+  const pnlPct = useMemo(() => {
+    if (!qtyHeld || !currentPrice || !avgPrice) return null;
+    if (avgPrice <= 0) return null;
+    return ((currentPrice - avgPrice) / avgPrice) * 100;
+  }, [qtyHeld, currentPrice, avgPrice]);
 
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState<'buy'|'sell'|null>(null);
@@ -146,7 +151,8 @@ export function TradePanel({
       // Immediately refresh local state so timestamps and history update without delay
       const fresh = await api.getState();
       await mutate(fresh, { revalidate: false });
-      setQty(0); setUsd(0);
+      setUsd(0);
+      setSelectedPct(null);
     } catch (e: any) {
       setActionError(e?.message || 'Buy failed');
     }
@@ -254,9 +260,9 @@ export function TradePanel({
           <Text style={styles.tokenTitle}>{symbol || name || mint.slice(0,4)+"…"+mint.slice(-4)}</Text>
           <Text style={styles.priceLabel}> Price</Text>
           <Text style={styles.tokenPrice}>{currentPrice != null ? `$${currentPrice.toFixed(7)}` : '—'}</Text>
-          {typeof changePct === 'number' && isFinite(changePct) && (
-            <Text style={[styles.percentChange, changePct >= 0 ? styles.up : styles.down]}>
-              {changePct >= 0 ? '▲ +' : '▼ -'}{Math.abs(changePct).toFixed(2)}%
+          {typeof (pnlPct ?? changePct) === 'number' && isFinite((pnlPct ?? changePct) as number) && (
+            <Text style={[styles.percentChange, (pnlPct ?? changePct)! >= 0 ? styles.up : styles.down]}>
+              {(pnlPct ?? changePct)! >= 0 ? '▲ +' : '▼ -'}{Math.abs((pnlPct ?? changePct) as number).toFixed(2)}%
             </Text>
           )}
           {(marketCap || estBoughtMCap) && (
@@ -319,37 +325,38 @@ export function TradePanel({
           <Text style={styles.section}>Buy</Text>
           <View style={[styles.formRow, { alignItems: 'flex-start' }]}>
             <View style={styles.inputCell}>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <Pressable onPress={() => setMode('qty')} style={[styles.modePill, mode==='qty' && styles.modePillActive]}><Text style={[styles.modePillText, mode==='qty' && styles.modePillTextActive]}>Qty</Text></Pressable>
-                <Pressable onPress={() => setMode('usd')} style={[styles.modePill, mode==='usd' && styles.modePillActive]}><Text style={[styles.modePillText, mode==='usd' && styles.modePillTextActive]}>USD</Text></Pressable>
+              <TextInput
+                value={usd ? String(usd) : ""}
+                onChangeText={(t) => { setUsd(Number(t) || 0); setSelectedPct(null); }}
+                placeholder="0"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="numeric"
+                style={[styles.input, { marginTop: 6 }]}
+              />
+              <View style={styles.amountsRow}>
+                {[25,50,100].map(v => (
+                  <Pressable key={v} onPress={() => { setUsd((usd||0)+v); setSelectedPct(null); }} style={[styles.chipBtn, styles.chipBtnGhost]}><Text style={styles.chipText}>+${v}</Text></Pressable>
+                ))}
+                <Pressable onPress={() => { setUsd(Number(balance.toFixed(2))); setSelectedPct(null); }} style={[styles.chipBtn, styles.chipBtnAccent]}><Text style={styles.chipTextAccent}>MAX</Text></Pressable>
               </View>
-              {mode === 'qty' ? (
-                <TextInput
-                  value={qty ? String(qty) : ""}
-                  onChangeText={(t) => setQty(Number(t) || 0)}
-                  placeholder="0"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  style={[styles.input, { marginTop: 6 }]}
-                />
-              ) : (
-                <TextInput
-                  value={usd ? String(usd) : ""}
-                  onChangeText={(t) => setUsd(Number(t) || 0)}
-                  placeholder="0"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  style={[styles.input, { marginTop: 6 }]}
-                />
-              )}
-              {mode === 'usd' && (
-                <View style={styles.amountsRow}>
-                  {[25,50,100].map(v => (
-                    <Pressable key={v} onPress={() => setUsd((usd||0)+v)} style={[styles.chipBtn, styles.chipBtnGhost]}><Text style={styles.chipText}>+${v}</Text></Pressable>
-                  ))}
-                  <Pressable onPress={() => setUsd(Number(balance.toFixed(2)))} style={[styles.chipBtn, styles.chipBtnAccent]}><Text style={styles.chipTextAccent}>MAX</Text></Pressable>
-                </View>
-              )}
+              {/* Quick percentage of balance */}
+              <View style={styles.percentRow}>
+                {[1,2,5,10,20,25,50].map(pct => (
+                  <Pressable
+                    key={pct}
+                    onPress={() => { setUsd(Number((balance * (pct/100)).toFixed(2))); setSelectedPct(pct); }}
+                    style={[styles.percentChip, selectedPct === pct && styles.percentChipEm]}
+                  >
+                    <Text style={[styles.percentChipText, selectedPct === pct && styles.percentChipTextEm]}>{pct}%</Text>
+                  </Pressable>
+                ))}
+              </View>
+              {/* Clear amount */}
+              <View style={styles.amountsRow}>
+                <Pressable onPress={() => { setUsd(0); setSelectedPct(null); }} style={[styles.chipBtn, styles.chipBtnGhost]}>
+                  <Text style={styles.chipText}>Clear</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
           <View style={styles.row}>
@@ -391,7 +398,7 @@ export function TradePanel({
       {!isCapturing && qtyHeld === 0 && !canBuy && (
         <Text style={styles.hint}>
           {effPrice <= 0 ? 'Waiting for market price' :
-          effectiveQty <= 0 ? (mode==='usd' ? 'Enter USD amount' : '') :
+          effectiveQty <= 0 ? 'Enter USD amount' :
           totalCost > balance ? 'Insufficient balance' : 'Fill all fields'}
         </Text>
       )}
@@ -748,6 +755,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.sm,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  // Percentage quick-select row
+  percentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
   },
   chipBtn: {
     ...baseButton,
@@ -780,6 +797,43 @@ const styles = StyleSheet.create({
   chipTextAccent: {
     color: colors.accent,
     fontWeight: '900',
+  },
+  // Percentage chips
+  percentChip: {
+    ...baseButton,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.surfaceBorder,
+    // Fit grid: ~4 per row with wrap
+    flexGrow: 1,
+    flexBasis: '23%',
+    maxWidth: '23%',
+    alignItems: 'center',
+    // Small screen overrides
+    ...(typeof window !== 'undefined' && window.innerWidth <= 360 ? { flexBasis: '48%', maxWidth: '48%' } : {}),
+    ...(typeof window !== 'undefined' && window.innerWidth > 360 && window.innerWidth <= 600 ? { flexBasis: '31%', maxWidth: '31%' } : {}),
+  },
+  percentChipEm: {
+    backgroundColor: colors.accent + '20',
+    borderColor: colors.accent,
+    borderWidth: 2,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  percentChipText: {
+    color: colors.textSecondary,
+    fontWeight: '800',
+    fontSize: type.label,
+    letterSpacing: 0.3,
+  },
+  percentChipTextEm: {
+    color: colors.accent,
   },
   // Mode pills
   modePill: {

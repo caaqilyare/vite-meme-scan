@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { View, Text, Image, StyleSheet, Pressable, TextInput, Clipboard } from "react-native";
 import useSWR from "swr";
 import Card from "../components/Card";
@@ -51,15 +51,13 @@ async function fetchRugReport([, m]: [string, string]) {
   return report;
 }
 
-// Price is provided via the summary endpoint
-
-type Summary = { price?: number; priceUsd?: number; marketCap?: number; supply?: number };
-async function fetchSummary([, m]: [string, string]): Promise<Summary> {
-  const url = `/api/scan/summary/${m}`;
+// Price fetch (from server proxy)
+async function fetchPrice([, m]: [string, string]): Promise<{ price: number | null }> {
+  const url = `/api/scan/price/${m}`;
   const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) throw new Error(`Summary ${res.status}`);
+  if (!res.ok) throw new Error(`Price ${res.status}`);
   const j = await res.json();
-  return j || {};
+  return { price: (typeof j?.price === 'number' ? j.price : null) };
 }
 
 // Removed SOL/USD conversion per request
@@ -70,20 +68,20 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Split SWR: fast 300ms price+marketcap via summary, and lighter 60s report polling
+  // Split SWR: 60s RugCheck report (supply cache) + 300ms price polling
   const reportKey = searchedMint ? (["report", searchedMint] as const) : null;
-  const summaryKey = searchedMint ? (["summary", searchedMint] as const) : null;
+  const priceKey = searchedMint ? (["price", searchedMint] as const) : null;
 
   const { data: report, error: reportError, isLoading: reportLoading } = useSWR(
     reportKey,
     fetchRugReport,
-    { refreshInterval: 60_000, revalidateOnFocus: true, keepPreviousData: true }
+    { refreshInterval: 300_000, revalidateOnFocus: true, keepPreviousData: true }
   );
 
-  const { data: summary, error: summaryError, isLoading: summaryLoading } = useSWR(
-    summaryKey,
-    fetchSummary,
-    { refreshInterval: 300, dedupingInterval: 0, revalidateIfStale: true }
+  const { data: priceResp, error: priceError, isLoading: priceLoading } = useSWR(
+    priceKey,
+    fetchPrice,
+    { refreshInterval: 300, dedupingInterval: 0, revalidateIfStale: true, keepPreviousData: true }
   );
 
   // No SOL/USD usage
@@ -96,26 +94,43 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
   const totalHolders = (report as any)?.totalHolders as number | undefined;
 
   const supply = useMemo(() => {
-    // prefer server-computed supply if available; fallback to report
-    const serverSupply = typeof summary?.supply === 'number' ? summary.supply : null;
-    if (serverSupply != null) return serverSupply;
     if (!report?.token) return null;
     const d = report.token.decimals ?? 0;
-    return report.token.supply / Math.pow(10, d);
-  }, [summary?.supply, report]);
+    const raw = report.token.supply;
+    return Number.isFinite(raw) ? raw / Math.pow(10, d) : null;
+  }, [report]);
 
   // Use server summary values refreshed at 300ms
   const priceUsd = useMemo(() => {
-    const p = summary?.priceUsd ?? summary?.price;
+    const p = priceResp?.price;
     return typeof p === 'number' ? p : null;
-  }, [summary]);
+  }, [priceResp?.price]);
 
   const marketCap = useMemo(() => {
-    const m = summary?.marketCap;
-    if (typeof m === 'number') return m;
     if (priceUsd == null || supply == null) return null;
     return priceUsd * supply;
-  }, [summary, priceUsd, supply]);
+  }, [priceUsd, supply]);
+
+  // Persist last known good values to avoid flicker/"—" during brief upstream nulls
+  const [priceUsdStable, setPriceUsdStable] = useState<number | null>(null);
+  const [supplyStable, setSupplyStable] = useState<number | null>(null);
+  const [marketCapStable, setMarketCapStable] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (typeof priceUsd === 'number' && isFinite(priceUsd)) setPriceUsdStable(priceUsd);
+  }, [priceUsd]);
+
+  useEffect(() => {
+    if (typeof supply === 'number' && isFinite(supply) && supply > 0) setSupplyStable(supply);
+  }, [supply]);
+
+  useEffect(() => {
+    if (typeof marketCap === 'number' && isFinite(marketCap)) {
+      setMarketCapStable(marketCap);
+    } else if (priceUsdStable != null && supplyStable != null) {
+      setMarketCapStable(Number((priceUsdStable * supplyStable).toFixed(2)));
+    }
+  }, [marketCap, priceUsdStable, supplyStable]);
 
   const hasSearched = !!searchedMint;
   const canScan = isValidMint(inputMint);
@@ -141,6 +156,13 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
           >
             <Text style={[styles.searchBtnText, !canScan && styles.searchBtnTextDisabled]}>{hasSearched ? "Rescan" : "Scan"}</Text>
           </Pressable>
+          <Pressable
+            onPress={() => { setInputMint(""); setSearchedMint(null); }}
+            style={styles.searchClearBtn}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          >
+            <Text style={styles.searchClearText}>Clear</Text>
+          </Pressable>
         </View>
         <Text style={styles.searchHint}>Example: 3b11QJgyXma8DQeUu2hvrUeAxcDjngkd5yS2vvBLpump</Text>
         {!canScan && inputMint.trim().length > 0 && (
@@ -156,7 +178,7 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
           <Text style={styles.emptyTitle}>Scan a Solana token</Text>
           <Text style={styles.emptySubtitle}>Get safety score, top holders, supply and live price.</Text>
         </View>
-      ) : (reportLoading || (!report && summaryLoading)) ? (
+      ) : (reportLoading || (!report && priceLoading)) ? (
         <View>
           <View style={styles.skeletonHeader} />
           <View style={styles.metricsRow}>
@@ -166,9 +188,9 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
           </View>
           <View style={styles.skeletonBadges} />
         </View>
-      ) : (reportError || summaryError) ? (
+      ) : (reportError || priceError) ? (
         <View style={styles.centerWrap}>
-          <Text style={styles.error}>Failed: {String(reportError || summaryError)}</Text>
+          <Text style={styles.error}>Failed: {String(reportError || priceError)}</Text>
           <Text style={styles.muted}>CORS? Try running over HTTPS or a proxy.</Text>
         </View>
       ) : (
@@ -217,9 +239,22 @@ export function MemeScanner({ mint = DEFAULT_MINT }: { mint?: string }) {
 
           {/* Key metrics */}
           <View style={styles.metricsRow}>
-            <Metric label="Price" value={priceUsd != null ? `$${formatNumber(priceUsd)}` : "—"} icon="💸" emphasis />
-            <Metric label="Market Cap" value={marketCap != null ? `$${formatCompact(marketCap)}` : "—"} icon="🏦" />
-            <Metric label="Supply" value={supply != null ? formatCompact(supply) : "—"} icon="💰" />
+            <Metric
+              label="Price"
+              value={(priceUsdStable ?? priceUsd) != null ? `$${formatNumber((priceUsdStable ?? priceUsd) as number)}` : "—"}
+              icon="💸"
+              emphasis
+            />
+            <Metric
+              label="Market Cap"
+              value={(marketCapStable ?? marketCap) != null ? `$${formatCompact((marketCapStable ?? marketCap) as number)}` : "—"}
+              icon="🏦"
+            />
+            <Metric
+              label="Supply"
+              value={(supplyStable ?? supply) != null ? formatCompact((supplyStable ?? supply) as number) : "—"}
+              icon="💰"
+            />
           </View>
 
           {/* Quick badges */}
@@ -324,6 +359,15 @@ const styles = StyleSheet.create({
   },
   searchBtnDisabled: { backgroundColor: "rgba(255,255,255,0.12)" },
   searchBtnTextDisabled: { color: colors.textSecondary },
+  searchClearBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceBorder,
+    borderWidth: 1,
+  },
+  searchClearText: { color: colors.textSecondary, fontWeight: "700", fontSize: type.body },
   searchHint: { color: colors.textSecondary, marginTop: 6, fontSize: type.label },
   searchBtnText: { color: "#fff", fontWeight: "700", fontSize: type.body },
   emptyState: { alignItems: "center", paddingVertical: spacing.lg, gap: 8 },

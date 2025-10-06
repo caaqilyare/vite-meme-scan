@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const DB_PATH = path.resolve(process.cwd(), 'server', 'db.json');
 const DIST_PATH = path.resolve(process.cwd(), 'dist');
-const TX_FEE = 4.3; // USD fee per transaction (buy/sell)
+const TX_FEE = 0.35; // USD fee per transaction (buy/sell)
 
 app.use(cors());
 app.use(express.json());
@@ -185,7 +185,14 @@ function isValidMint(m) {
 
 // Simple in-memory cache for RugCheck reports to avoid frequent fetches
 const reportCache = new Map(); // mint -> { ts: number, data: any }
-const REPORT_TTL_MS = 60_000;
+const REPORT_TTL_MS = 300_000; // cache RugCheck report for 5 minutes
+
+// Lightweight cache for FluxBeam price to stabilize 300ms polling
+const priceCache = new Map(); // mint -> { ts: number, price: number|null }
+const PRICE_TTL_MS = 300; // align with frontend polling cadence
+
+// Summary cache to preserve last known good price/supply/marketCap
+const summaryCache = new Map(); // mint -> { ts: number, price: number|null, supply: number|null, marketCap: number|null }
 async function getCachedReport(mint) {
   const now = Date.now();
   const cached = reportCache.get(mint);
@@ -214,6 +221,17 @@ async function fetchFluxPrice(mint) {
   return n;
 }
 
+async function getCachedFluxPrice(mint) {
+  const now = Date.now();
+  const cached = priceCache.get(mint);
+  if (cached && (now - cached.ts) < PRICE_TTL_MS) {
+    return cached.price;
+  }
+  const price = await fetchFluxPrice(mint);
+  priceCache.set(mint, { ts: now, price });
+  return price;
+}
+
 // Removed SOL/USD conversion per request
 
 // RugCheck proxy
@@ -224,7 +242,8 @@ app.get('/api/scan/report/:mint', async (req, res) => {
     const report = await fetchRugReport(mint);
     res.json(report);
   } catch (e) {
-    res.status(502).json({ error: String(e?.message || e) });
+    // Graceful fallback: return an empty report shape with error instead of 502
+    res.json({ error: String(e?.message || e) });
   }
 });
 
@@ -233,10 +252,11 @@ app.get('/api/scan/price/:mint', async (req, res) => {
   try {
     const { mint } = req.params;
     if (!isValidMint(mint)) return res.status(400).json({ error: 'Invalid mint' });
-    const price = await fetchFluxPrice(mint);
+    const price = await getCachedFluxPrice(mint);
     res.json({ price });
   } catch (e) {
-    res.status(502).json({ error: String(e?.message || e) });
+    // Graceful fallback: null price with error message
+    res.json({ price: null, error: String(e?.message || e) });
   }
 });
 
@@ -248,19 +268,30 @@ app.get('/api/scan/summary/:mint', async (req, res) => {
     const { mint } = req.params;
     if (!isValidMint(mint)) return res.status(400).json({ error: 'Invalid mint' });
     const [report, fluxPrice] = await Promise.all([
-      getCachedReport(mint),
-      fetchFluxPrice(mint),
+      getCachedReport(mint).catch(() => null),
+      getCachedFluxPrice(mint).catch(() => null),
     ]);
-    const decimals = Number(report?.token?.decimals ?? 0);
-    const rawSupply = Number(report?.token?.supply ?? 0);
-    const supply = Number.isFinite(rawSupply) ? rawSupply / Math.pow(10, decimals) : null;
-    const price = fluxPrice;
-    // IMPORTANT: Treat FluxBeam price as already in USD to avoid double conversion.
-    const priceUsd = price;
-    const marketCap = (supply != null && Number.isFinite(priceUsd)) ? priceUsd * supply : null;
+    const decimalsNum = Number(report?.token?.decimals ?? 0);
+    const rawSupplyNum = Number(report?.token?.supply ?? 0);
+    const supplyNew = (Number.isFinite(rawSupplyNum) && decimalsNum >= 0)
+      ? rawSupplyNum / Math.pow(10, decimalsNum)
+      : null;
+    const priceNew = (typeof fluxPrice === 'number' && Number.isFinite(fluxPrice)) ? fluxPrice : null;
+
+    const cached = summaryCache.get(mint) || { price: null, supply: null, marketCap: null };
+    const price = (priceNew != null) ? priceNew : cached.price;
+    const supply = (supplyNew != null && supplyNew > 0) ? supplyNew : cached.supply;
+    const priceUsd = price != null ? price : null;
+    const marketCapNew = (priceUsd != null && supply != null)
+      ? priceUsd * supply
+      : null;
+    const marketCap = (marketCapNew != null && Number.isFinite(marketCapNew)) ? marketCapNew : cached.marketCap ?? null;
+
+    summaryCache.set(mint, { ts: Date.now(), price: price ?? null, supply: supply ?? null, marketCap: marketCap ?? null });
     res.json({ mint, price, priceUsd, supply, marketCap, report });
   } catch (e) {
-    res.status(502).json({ error: String(e?.message || e) });
+    // Last-resort fallback
+    res.json({ mint: req.params?.mint, price: null, priceUsd: null, supply: null, marketCap: null, error: String(e?.message || e) });
   }
 });
 
@@ -277,6 +308,7 @@ app.get('*', (req, res, next) => {
   return next();
 });
 
-app.listen(PORT, () => {
-  console.log(`JSON server running at http://localhost:${PORT}`);
+// Bind explicitly to IPv4 to match Vite proxy target and avoid IPv6 localhost (::1) issues on Windows
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`JSON server running at http://127.0.0.1:${PORT}`);
 });

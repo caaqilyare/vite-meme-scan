@@ -39,14 +39,14 @@ const styles = StyleSheet.create({
     borderColor: colors.surfaceBorder,
   },
   cardGlass: {
-    backgroundColor: "rgba(255,255,255,0.06)",
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(0,0,0,0.03)",
+    borderColor: "rgba(0,0,0,0.08)",
     ...(Platform.OS === "web"
       ? ({
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
           backgroundImage:
-            "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%)",
+            "linear-gradient(180deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.02) 100%)",
         } as any)
       : {}),
   },

@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, StyleSheet, Pressable, TextInput, Modal, Clipboard } from "react-native";
+import { ScrollView, View, Text, StyleSheet, Pressable, TextInput, Modal, Clipboard, useWindowDimensions } from "react-native";
 import Card from "../components/Card";
 import { Stat } from "../components/Stat";
 import { colors } from "../theme/colors";
@@ -8,6 +8,7 @@ import useSWR from "swr";
 import { api } from "../api/client";
 import { useEffect, useMemo, useState } from "react";
 import { exportProfileHistoryPdf } from "../lib/pdfExport";
+// grid helper not needed here; we'll use width breakpoints inline in styles
 import { useRef } from "react";
 
 export function ProfileScreen() {
@@ -16,6 +17,10 @@ export function ProfileScreen() {
     revalidateOnFocus: true,
     keepPreviousData: true,
   });
+
+  // Responsive token grid: 1 per row on small screens, 2 per row otherwise
+  const tokenCols = (typeof window !== 'undefined' && window.innerWidth <= 600) ? 1 : 2;
+  const tokenWidthPct = `${Math.floor(100 / tokenCols)}%` as const;
 
   const name = data?.user?.name ?? "";
   const balance = data?.user?.balance ?? 0;
@@ -33,6 +38,14 @@ export function ProfileScreen() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [captureMsg, setCaptureMsg] = useState<string | null>(null);
   const panelRef = useRef<View | null>(null);
+
+  // Responsive action grid
+  const { width: screenWidth } = useWindowDimensions();
+  // Small screens: 12-column (full-width) tiles => 1 per row
+  const actionCols = screenWidth <= 480 ? 1 : (screenWidth <= 900 ? 3 : 4);
+  const actionWidthPct = `${Math.floor(100 / actionCols)}%` as const;
+
+  // Balance percent badge removed from UI; omit computed percent to avoid unused warnings
 
   useEffect(() => {
     // sync inputs when state arrives/refetches
@@ -258,7 +271,15 @@ export function ProfileScreen() {
           const pct = items.length ? Math.round(items.filter(i=>i.done).length / items.length * 100) : 0;
           const pnlStyle = (summary.realizedPnl>=0) ? { borderColor: colors.buy, color: colors.buy } : { borderColor: colors.sell, color: colors.sell };
           return (
-            <Pressable key={mint} onPress={() => setSelectedMint(mint)} style={[styles.tokenCardItem, styles.clickableRow]}>
+            <Pressable
+              key={mint}
+              onPress={() => setSelectedMint(mint)}
+              style={[
+                styles.tokenCardItem,
+                styles.clickableRow,
+                { flexBasis: tokenWidthPct, maxWidth: tokenWidthPct } as any,
+              ]}
+            >
               <View style={{ gap: 4 }}>
                 <View style={styles.cardItemHeader}>
                   <Text style={styles.cardItemTitle} numberOfLines={1}>{label}</Text>
@@ -541,24 +562,6 @@ export function ProfileScreen() {
       <View ref={panelRef as any}>
       <View style={styles.headerRow}>
         <Text style={styles.h1}>Profile</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <Pressable onPress={onExportPdf} disabled={isExporting} style={[styles.pillBtn, isExporting && styles.btnDisabled]}>
-            <Text style={[styles.pillBtnText, isExporting && { color: colors.textSecondary }]}>{isExporting ? 'Exporting…' : 'Export PDF'}</Text>
-          </Pressable>
-          {!isCapturing && (
-            <View style={styles.captureBar}>
-              <Pressable onPress={() => captureProfile('copy')} style={[styles.pillBtn, styles.ghostPill]}>
-                <Text style={styles.pillBtnText}>Copy</Text>
-              </Pressable>
-              <Pressable onPress={() => captureProfile('download')} style={[styles.pillBtn, styles.pillBtnActive]}>
-                <Text style={[styles.pillBtnText, styles.pillBtnTextActive]}>Download</Text>
-              </Pressable>
-            </View>
-          )}
-          <Pressable onPress={() => setShowResetModal(true)} style={[styles.pillBtn, styles.pillBtnActive]}>
-            <Text style={[styles.pillBtnText, styles.pillBtnTextActive]}>Reset</Text>
-          </Pressable>
-        </View>
       </View>
       {/* Hero banner */}
       <Card variant="glass" style={styles.banner}>
@@ -581,14 +584,62 @@ export function ProfileScreen() {
         </View>
       </Card>
 
+      {/* Quick Actions */}
+      <Card variant="glass" style={styles.actionsCard}>
+        <Text style={styles.cardTitle}>Quick Actions</Text>
+        <View style={styles.actionsGrid}>
+          <Pressable
+            onPress={onExportPdf}
+            disabled={isExporting}
+            style={[styles.actionTile, { flexBasis: actionWidthPct, maxWidth: actionWidthPct }, isExporting && styles.actionTileDisabled]}
+          >
+            <Text style={styles.actionIcon}>📄</Text>
+            <Text style={styles.actionLabel}>Export PDF</Text>
+          </Pressable>
+          {!isCapturing && (
+            <Pressable
+              onPress={() => captureProfile('copy')}
+              style={[styles.actionTile, styles.actionTileGhost, { flexBasis: actionWidthPct, maxWidth: actionWidthPct }]}
+            >
+              <Text style={styles.actionIcon}>📋</Text>
+              <Text style={styles.actionLabel}>Copy</Text>
+            </Pressable>
+          )}
+          {!isCapturing && (
+            <Pressable
+              onPress={() => captureProfile('download')}
+              style={[styles.actionTile, styles.actionTilePrimary, { flexBasis: actionWidthPct, maxWidth: actionWidthPct }]}
+            >
+              <Text style={[styles.actionIcon, styles.actionIconPrimary]}>⬇️</Text>
+              <Text style={[styles.actionLabel, styles.actionLabelPrimary]}>Download</Text>
+            </Pressable>
+          )}
+          <Pressable
+            onPress={() => setShowResetModal(true)}
+            style={[styles.actionTile, styles.actionTileDanger, { flexBasis: actionWidthPct, maxWidth: actionWidthPct }]}
+          >
+            <Text style={[styles.actionIcon, styles.actionIconDanger]}>♻️</Text>
+            <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Reset</Text>
+          </Pressable>
+        </View>
+      </Card>
+
       {/* Stats */}
       {tab === 'account' && (
         <Card variant="glass" style={styles.statsCard}>
-          <View style={styles.statsRow}>
-            <Stat label="Balance" value={`$${balance.toFixed(2)}`} />
-            <Stat label="Buys" value={`${totalBuys}`} />
-            <Stat label="Win Rate" value={`${Math.round(winRate * 100)}%`} />
-            <Stat label="Realized PnL" value={`${totalRealizedPnl>=0?'+':''}$${Math.abs(totalRealizedPnl).toFixed(2)}`} />
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Stat label="Balance" value={`$${balance.toFixed(2)}`} />
+            
+            </View>
+            <View style={styles.statItem}><Stat label="Buys" value={`${totalBuys}`} /></View>
+            <View style={styles.statItem}><Stat label="Win Rate" value={`${Math.round(winRate * 100)}%`} /></View>
+            <View style={styles.statItem}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Stat label="Realized PnL" value={`${totalRealizedPnl>=0?'+':''}$${Math.abs(totalRealizedPnl).toFixed(2)}`} />
+               
+              </View>
+            </View>
           </View>
         </Card>
       )}
@@ -650,8 +701,8 @@ export function ProfileScreen() {
               style={styles.input}
             />
           </View>
-          <Pressable onPress={onDeposit} disabled={!(Number(depositAmt) > 0)} style={[styles.primaryBtn, !(Number(depositAmt) > 0) && styles.btnDisabled]}>
-            <Text style={styles.primaryBtnText}>Add</Text>
+          <Pressable onPress={onDeposit} disabled={!(Number(depositAmt) > 0)} style={[styles.pillBtn, !(Number(depositAmt) > 0) && styles.btnDisabled]}>
+            <Text style={styles.pillBtnText}>Add</Text>
           </Pressable>
         </View>
       </Card>
@@ -761,6 +812,80 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   subtitle: { color: colors.textSecondary, fontSize: 16 },
   captureBar: { flexDirection: 'row', gap: 8 },
+  // Responsive actions bar (Export PDF, Copy, Download, Reset)
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+    alignItems: 'stretch',
+    maxWidth: '100%',
+  },
+  // Card container for the actions section under the banner
+  actionsCard: {
+    padding: spacing.md,
+    gap: spacing.sm,
+    ...(typeof document !== 'undefined' ? ({
+      backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)"
+    } as any) : {}),
+  },
+  // Modern action tiles
+  actionTile: {
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceBorderStrong,
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    ...(typeof document !== 'undefined' ? ({ boxShadow: '0 2px 10px rgba(0,0,0,0.12)' } as any) : { elevation: 2 }),
+  },
+  actionTileGhost: {
+    backgroundColor: 'rgba(255,255,255,0.04)'
+  },
+  actionTilePrimary: {
+    backgroundColor: colors.accent + '22',
+    borderColor: colors.accent
+  },
+  actionTileDanger: {
+    backgroundColor: '#ef444422',
+    borderColor: '#ef4444'
+  },
+  actionTileDisabled: {
+    opacity: 0.6
+  },
+  actionIcon: {
+    fontSize: 22,
+    lineHeight: 24,
+  },
+  actionIconPrimary: {
+    color: colors.accent
+  },
+  actionIconDanger: {
+    color: '#ef4444'
+  },
+  actionLabel: {
+    color: colors.textPrimary,
+    fontWeight: '800',
+    fontSize: type.body,
+  },
+  actionLabelPrimary: {
+    color: colors.accent,
+  },
+  actionLabelDanger: {
+    color: '#ef4444'
+  },
+  actionItem: {
+    flexGrow: 1,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...(typeof window !== 'undefined' && window.innerWidth <= 480 ? { flexBasis: '48%', maxWidth: '48%' } : {}),
+    ...(typeof window !== 'undefined' && window.innerWidth > 480 && window.innerWidth <= 900 ? { flexBasis: '31%', maxWidth: '31%' } : {}),
+    ...(typeof window !== 'undefined' && window.innerWidth > 900 ? { flexBasis: '24%', maxWidth: '24%' } : {}),
+  },
   row: { flexDirection: "row", gap: spacing.sm },
   banner: {
     padding: spacing.md,
@@ -783,6 +908,72 @@ const styles = StyleSheet.create({
   subtitleMuted: { color: colors.textMuted, fontSize: type.label },
   statsCard: { paddingVertical: spacing.sm },
   statsRow: { flexDirection: 'row', gap: spacing.sm },
+  // New: 2x2 stats grid for Balance, Buys, Win Rate, Realized PnL
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    flexGrow: 1,
+    // 2 columns with gap: approximate half width
+    flexBasis: '48%',
+    maxWidth: '48%',
+    gap: 2,
+  },
+  // Tiny percentage/value badges under stats (more prominent)
+  miniPct: { fontSize: type.valueMd, fontWeight: '900', marginTop: 0 },
+  miniArrow: { fontSize: type.valueMd, fontWeight: '900', marginTop: 0 },
+  miniPctUp: { color: colors.success },
+  miniPctDown: { color: '#ff7b7b' },
+  miniPnl: { fontSize: type.label, fontWeight: '900', marginTop: 2 },
+  // Stat big value variant (colored for PnL)
+  statValue: { color: colors.textPrimary, fontWeight: '900', fontSize: type.valueMd },
+  // Balance value emphasized
+  balanceValue: { color: colors.textPrimary, fontWeight: '900', fontSize: type.h2 },
+  // Badge for Realized PnL (narrower pill + subtle gradient)
+  statBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    ...(typeof document !== 'undefined' ? ({
+      backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.12)'
+    } as any) : { elevation: 2 }),
+  },
+  statBadgeUp: { backgroundColor: 'rgba(34,197,94,0.15)', borderColor: colors.success },
+  statBadgeDown: { backgroundColor: 'rgba(255,123,123,0.15)', borderColor: '#ff7b7b' },
+  statBadgeText: { fontWeight: '900', color: colors.textPrimary, fontSize: type.body },
+  // Small chip for inline percent next to balance
+  miniChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: 'center',
+    ...(typeof document !== 'undefined' ? ({ backgroundColor: 'rgba(255,255,255,0.04)' } as any) : {}),
+  },
+  miniChipUp: { borderColor: colors.success },
+  miniChipDown: { borderColor: '#ff7b7b' },
+  miniChipText: { fontWeight: '900', fontSize: type.label },
+  // Balance badge (placed under balance value)
+  balanceBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+    backgroundColor: '#fff',
+    borderColor: '#fff',
+    ...(typeof document !== 'undefined' ? ({ boxShadow: '0 1px 6px rgba(0,0,0,0.18)' } as any) : { elevation: 2 }),
+  },
+  balanceBadgeUp: { },
+  balanceBadgeDown: { },
+  balanceBadgeText: { fontWeight: '900', fontSize: type.label, color: '#111' },
   cardTitle: { color: colors.textPrimary, fontSize: type.h2, fontWeight: "700", marginBottom: 10 },
   bodyText: { color: colors.textMuted, lineHeight: 20, fontSize: type.body },
   secondaryBtn: {
@@ -861,6 +1052,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingHorizontal: spacing.sm,
     alignItems: 'stretch',
+    // Small screens: single column, tighter gaps
     ...(typeof window !== 'undefined' && window.innerWidth <= 600 ? { 
       flexDirection: 'column',
       gap: spacing.xs,
@@ -891,7 +1083,7 @@ const styles = StyleSheet.create({
   cardItemTitle: { color: colors.textPrimary, fontWeight: '900', fontSize: type.body },
   cardItemSub: { color: colors.textSecondary, fontSize: type.label },
   cardItemMeta: { color: colors.textMuted, fontSize: type.label },
-  cardItemFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  cardItemFooter: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' },
   progressMiniBar: { flex: 1, height: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: colors.surfaceBorder, overflow: 'hidden' },
   progressMiniText: { color: colors.textSecondary, fontSize: type.label, fontWeight: '800' },
   smallBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: colors.surfaceBorder },
@@ -916,9 +1108,9 @@ const styles = StyleSheet.create({
   detailParagraph: { color: colors.textSecondary, marginBottom: spacing.sm, fontSize: type.body },
   addrRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
   addrMono: { color: colors.textMuted, fontSize: type.label, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'space-between' },
   detailKRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  eventRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder },
+  eventRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder, flexWrap: 'wrap', gap: 6 },
   activityMain: { color: colors.textPrimary, fontWeight: '700', fontSize: type.body },
   activitySub: { color: colors.textMuted, fontSize: type.label },
   up: { color: colors.success },
