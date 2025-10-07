@@ -14,7 +14,7 @@ app.use(express.json());
 
 function initialState() {
   return {
-    user: { name: 'Munasar', balance: 65 },
+    user: { name: 'Munasar', balance: 0 },
     positions: {},
     history: [],
     deposits: [],
@@ -46,7 +46,7 @@ app.get('/api/state', (req, res) => {
   const db = readDB();
   // ensure defaults
   if (!db.user || typeof db.user.balance !== 'number') {
-    db.user = { name: 'Munasar', balance: 65 };
+    db.user = { name: 'Munasar', balance: 0 };
     writeDB(db);
   }
   if (!db.history) db.history = [];
@@ -193,6 +193,8 @@ const PRICE_TTL_MS = 300; // align with frontend polling cadence
 
 // Summary cache to preserve last known good price/supply/marketCap
 const summaryCache = new Map(); // mint -> { ts: number, price: number|null, supply: number|null, marketCap: number|null }
+// Fallback price to avoid nulls in the client when upstream price is unavailable
+const PRICE_FALLBACK = 0.00004996332706936711;
 async function getCachedReport(mint) {
   const now = Date.now();
   const cached = reportCache.get(mint);
@@ -256,7 +258,7 @@ app.get('/api/scan/price/:mint', async (req, res) => {
     res.json({ price });
   } catch (e) {
     // Graceful fallback: null price with error message
-    res.json({ price: null, error: String(e?.message || e) });
+    res.json({ price: PRICE_FALLBACK, error: String(e?.message || e) });
   }
 });
 
@@ -279,7 +281,7 @@ app.get('/api/scan/summary/:mint', async (req, res) => {
     const priceNew = (typeof fluxPrice === 'number' && Number.isFinite(fluxPrice)) ? fluxPrice : null;
 
     const cached = summaryCache.get(mint) || { price: null, supply: null, marketCap: null };
-    const price = (priceNew != null) ? priceNew : cached.price;
+    const price = (priceNew != null) ? priceNew : (cached.price != null ? cached.price : PRICE_FALLBACK);
     const supply = (supplyNew != null && supplyNew > 0) ? supplyNew : cached.supply;
     const priceUsd = price != null ? price : null;
     const marketCapNew = (priceUsd != null && supply != null)
@@ -308,7 +310,7 @@ app.get('*', (req, res, next) => {
   return next();
 });
 
-// Bind explicitly to IPv4 to match Vite proxy target and avoid IPv6 localhost (::1) issues on Windows
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`JSON server running at http://127.0.0.1:${PORT}`);
+// Bind to 0.0.0.0 so the server is reachable via machine IP on the network
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`JSON server running on port ${PORT} (reachable via your machine IP)`);
 });
